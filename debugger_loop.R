@@ -1,17 +1,17 @@
 library(tidyverse)
 #### Set-up ####
 # Number of agents
-N <- 100
+N <- 50
 # Maximum turns 
-t_max <- 200
+t_max <- 500
 # Baseline fertility rate 
-b <- 0.01
+b <- 0.05
 # Bonus fertility for fitness
 bonus_fitness <- 0.05
 # Bonus survival 
 bonus_survival <- 0.05
 # Repository (enough rows; plus one column for age)
-population <- matrix(NA, nrow= 1e5, 
+population <- matrix(NA, nrow= 1e6, 
                      ncol = t_max+2)
 
 # An index for organizing 
@@ -22,8 +22,7 @@ index <- sample(x = 1:100,
 # First traits 
 population[1:N, 2] <- sample(c(1:4), 
                              size = N, 
-                             replace = T, 
-                             prob = c(0.05, 0.3, 0.3, 0.35))
+                             replace = T)
 # Draw age as integer 
 age <- runif(n = N, min = 1, max = 100) %>% as.integer()
 # Add to our matrix 
@@ -136,12 +135,11 @@ for(i in 1:t_max) {
   } else {
     state_world <- state_world
   }
-  table_traits <- table(population[,i+2])
   df_results[i,1] <- mean(population[,1], na.rm = T)
-  df_results[i,2] <- table_traits[1]
-  df_results[i,3] <- table_traits[2]
-  df_results[i,4] <- table_traits[3]
-  df_results[i,5] <- table_traits[4]
+  df_results[i,2] <- sum(population[which(!is.na(population[,1])),i+2]==1)
+  df_results[i,3] <- sum(population[which(!is.na(population[,1])),i+2]==2)
+  df_results[i,4] <- sum(population[which(!is.na(population[,1])),i+2]==3)
+  df_results[i,5] <- sum(population[which(!is.na(population[,1])),i+2]==4)
   df_results[i,6] <- env_change
   df_results[i, 7] <- length(population[which(!is.na(population[,1]))])
 }
