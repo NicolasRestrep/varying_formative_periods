@@ -1,4 +1,7 @@
+#!/usr/bin/env Rscript
+
 library(tidyverse)
+library(extraDistr)
 
 varying_windows_model <- function(N,
                                   t_max,
@@ -193,6 +196,9 @@ varying_windows_model <- function(N,
       mutate(changed = turn*environment_change)
     
     all_results[[j]] <- df
+    print(paste0("working on ", 
+                 j, mu_open, sigma_open, 
+                 b, dem_surv))
   }
   return(all_results)
 }
