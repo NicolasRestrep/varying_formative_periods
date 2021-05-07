@@ -211,9 +211,9 @@ variances <- rep(c(rep(2, 3),
                rep(10, 3)), 
                2)
 
-brates <- rep(c(rep(c(0.05, 0.1, 0.5), 3)), 2)
+brates <- rep(c(rep(c(0.05, 0.1, 0.05), 3)), 2)
 
-dem_surv <- rep(c(rep(c(4, 2, 2), 3)), 2)
+dem_surv <- rep(c(rep(c(4, 2, 8), 3)), 2)
 
 df <- data.frame(mu_open = MUs, 
                  sigma_open = variances, 
