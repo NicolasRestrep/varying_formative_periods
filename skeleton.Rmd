@@ -1,0 +1,396 @@
+---
+title: "The shape of formative windows affects the rhythm of cultural change"
+author: "Nicolas Restrepo"
+date: "5/14/2021"
+fontsize: 12pt
+output:
+  pdf_document: default
+  html_document: default
+header-includes:
+  - \usepackage{setspace}
+  - \doublespacing
+  - \usepackage{lineno}
+  - \linenumbers
+  - \def\linenumberfont{\normalfont\tiny\sffamily}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F, fig.align='center')
+library(tidyverse)
+library(extraDistr)
+library(broom)
+theme_set(theme_minimal())
+```
+
+## Introduction 
+
+Here, I am going to lay out a skeleton of what I envision the paper might look like. The idea is to see whether the argument works and what kind of evidence we would need to back it up. 
+
+## Background 
+
+Adults rarely change their mind. This is a finding that has emerged recurrently in work about cultural change. While young people seem to change their attitudes, adults tend to have largely stable worldviews. 
+
+The notion of a period of exploration followed by stability resonates with wider work about formative windows. Many species - and intelligent systems in general - display a period of flexibility and plasticity, becoming afterwards less receptive to novel information. These periods might be a solution to the explore-exploit dilemma: agents explore in their early years to reap the benefits later in life. They might just be a result of Bayesian updating. Early experience cements priors that might be later difficult to shift. 
+
+We might have solid evidence to believe that the human life-course involves such a formative period, but there is little work about its length and shape. For instance, Gopnik argues that humans' extended childhood is our species' evolutionary response to the exploration-exploitation trade-off. But it is unclear how we are meant to conceive our capacity to learn throughout that period. Perhaps we should conceive it as a uniform distribution across an age-range or maybe it is a bell-curve distribution that peaks at a certain age. Furthermore, many of the phenomena that scholars who study cultural change are interested in - like moral and political worldviews, or sophisticated tool use - tend to emerge in adolescence. The main point is that we do not have clear evidence about the functional form that expresses humans' formative windows. 
+
+Furthermore, a great deal of sociological work suggests that the life-course and its stages change both across and within cultures. A 18 year-old married woman is a less common sight in the contemporary US than it was a few decades ago. Furhtermore, as Bourdieu notes, the children of the upper-class tend to be afforded extended adolescences, while working-class individuals tend to settle down earlier. 
+
+There is then a great deal of uncertainty around humans' formative windows. We have principled reasons to believe that the length and shape of these periods might vary across cultures and throughout time. This gap is of scientific interest because the notion of a formative period - of exploration followed by stability - has become a mechanism to explain cultural change. If the story of adulthood is mostly one of stability, then cultural change should happen through cohort replacement, as individuals brought up under different circumstances take the place of their elders. 
+
+But the pace of cohort replacement depends on the length and shape of formative periods, as well as on the demographic characteristics of the population. Imagine two societies with similar fertility and mortality rates but with different norms about childhood and adolescence. In one society, individuals aged 18 are meant to be settled down so most exploration occurs during the teens. In the other, exploration extends into the early 30s and the peak occurs around the late teens and early 20s. We might suspect that these societies would exhibit different patterns of cultural change, despite similar demographic makeup. 
+
+Now consider two societies that have similar norms around exploration but differ in their demographic properties. Exploration happens mostly during the early teens and individuals are mostly settled by 18. One society, however, is currently undergoing a baby boom, while the other's fertility rates have been steadily declining. Again, despite similar norms around when exploration is meant to occur, we would suspect that cohort replacement might occur at different rhythms in these two settings. 
+
+The nature of cultural change - as occurring through cohort replacement - then might depend on the shape and length of formative periods, as well as how these relate to a population's demographic characteristics. In a recent article, McElreath and Deffner show the benefits of bringing a life-history approach to the study of the evolution of social learning strategies. In this article, we approach the phenomenon of cultural change from a similar angle. We examine the implications of varying the ages when agents are more receptive to novel information, and the effect that this has on cultural change on populations with different demographic characteristics. 
+
+## The Model 
+
+We explore this through an agent-based model where individuals learn from one another and directly from the environment, they reproduce, and are progressively replaced by their offspring. 
+
+### The setting 
+
+The model has a starting population of a hundred agents with ages randomly drawn from a uniform distribution between 1 and 100. What is being transmitted in our model are four different traits, and each agent is randomly assigned one at the start of each run. All agents occupy the same environment, which - at a given time - can be in one of four states. Each state of the environment corresponds with one of the traits being transmitted - e.g. trait "A" with environmental state 1, and so forth. The agents who have the favored trait gain a reproductive bonus ($\beta_{bonus}$) and a survival bonus ($s_{bonus}$). 
+
+The model has a distinctive feature: it uses specific functional forms to outline the periods when agents are open to new information and their chances of survival across the lifetime. This helps us examine how varying formative windows affect cultural change in populations with different demographic makeup. 
+
+### Varying Formative Windows
+
+Previous models of cultural evolution have taken into account that exploration takes place early in life, followed by relative stability. Agents then are allowed to learn during their juvenile period, with exploring ceasing once they leave this age group. This is equivalent to saying that agents' probability of learning is defined by a uniform distribution over a specific age range - whatever the authors determine to be the juvenile period. 
+
+Here, we are interested in examining what happens when learning peaks at a certain age, and when it is more or less clustered around that maximum. To express this, we use a Gumbel distribution. This distribution has a long right tail and, therefore, it can be used to describe events that are unlikely. In our context, it means that young agents learn with a high probability and, as they age, exploration becomes increasingly rare. 
+
+In order to represent the agents' probability of learning, we take the density distributions and standardize the values so they fall between 0 and 1. Thus, for each age (x-axis), we get an associated probability to learn (y-axis). The plot below shows three distributions with mean 20 and variances 2, 5, and 10. The probability of learning for an 30 year-old agent would be of 3% in the distribution with variance 2, 38% in the one with variance 5, and 73% in the high-variance case. 
+
+```{r}
+# Low standard deviation
+y_lsd <- dgumbel(seq(0, 100, by = 1), mu = 20, sigma = 2)
+y_lsd_scaled <- (y_lsd - min(y_lsd))/(max(y_lsd)-min(y_lsd))
+
+# mid standard deviation
+y_msd <- dgumbel(seq(0, 100, by = 1), mu = 20, sigma = 5)
+y_msd_scaled <- (y_msd - min(y_msd))/(max(y_msd)-min(y_msd))    
+
+# high standard deviation
+y_hsd <- dgumbel(seq(0, 100, by = 1), mu = 20, sigma = 10)
+y_hsd_scaled <- (y_hsd - min(y_hsd))/(max(y_hsd)-min(y_hsd))
+
+df_gumbel <- tibble(age = rep(0:100, 3), 
+                    p_learn = c(y_lsd_scaled, 
+                                y_msd_scaled, 
+                                y_hsd_scaled), 
+                    type = rep(c("low variance", 
+                             "mid variance", 
+                             "high variance"), each = 101))
+
+df_gumbel %>% 
+  ggplot(aes(x = age, 
+             y = p_learn, 
+             color = type)) +
+  geom_line() + 
+  labs(title = "Three Gumbel Curves", 
+       y = "Pr. Learning", 
+       x = "Age",
+       color = "Type")
+
+```
+
+### Fertility and Mortality Rates 
+
+There are two main factors that control the demographic makeup of the population in our model: birth rates and the function that outlines the agents' probability of survival. The former is determined by a parameter $\beta$ that defines the probability that agents who are of reproductive age actually have offspring. We determine that agents that are between 15 and 40 years old can have offspring, and this occurs through haploid reproduction. The probability of reproducing steadily declines as the population ($P$) goes above the carrying capacity of the environment ($c$), which we set to 100. Thus, the probability that an agent of reproductive age has offspring is:
+
+$$ P(R) = \frac{\beta + \beta_{bonus}}{\frac{P}{c}}$$
+
+Building on McElreath and Deffner, we define that the agents' probability of survival declines non-linearly as they age. To define this, we use a power law distribution with a negative exponent ($\alpha$). This parameter determines how steep the decline of the probability of survival is with age. Just as above, we let this relationship change as the population grows over the carrying capacity of the environment: chances of survival become smaller as the environment gets more crowded. We get two functions, then, that determine the agents' probability of survival. If the population is below the carrying capacity of the environment then the probability of survival is defined by: 
+
+$$ P(S) = 1-{(\frac{x-a}{b-a})^\alpha} $$
+
+where x is the age of the agent, a is the minimum age - in our case 0 -  and b the maximum age - 100 in our model. 
+
+If the population is above the carrying capacity, then the function is: 
+
+$$P(S) =  1-(\frac{x-a}{b-a})^\frac{\alpha}{\frac{P}{c}} $$
+
+The plot below shows three distributions with alpha 2, 4, and 8. Notice that $\alpha$ increases, the probability of survival increases. 
+
+```{r}
+x <- c(1:100)
+y_1 <- 1 - ((x-1)/(100-1))^2
+y_2 <- 1 - ((x-1)/(100-1))^4
+y_3 <- 1 - ((x-1)/(100-1))^8
+
+example_age <- tibble(age = rep(1:100, 3), 
+                      p_s = c(y_1, y_2, y_3),
+                      alpha = as.factor(rep(c(2, 4, 8), 
+                                            each = 100)))
+example_age %>% 
+  ggplot(aes(x = age, y = p_s, color = alpha)) +
+  geom_line() + 
+  theme_bw() + 
+  labs(title = "Probability of survival and age", 
+       caption = "Population of 100 or below")
+
+```
+
+### The simulation
+
+Each turn of the simulation consists of five parts. First, the agents learn. Whether the agents update their trait is decided by a bernoulli trial with probability determined by the Gumbel function outlined above. If the trial is successful, then the agents learn socially with a probability $l$ or learn individually, directly from the environment, with probability $1-l$. When agents learn socially, they pick a random demonstrator and acquire their trait. When they learn individually, they access the state of the environment directly and acquire the trait that corresponds with it. 
+
+After learning takes place, the model considers the agents' survival. Survival is again decided by a Bernoulli trial with a probability that varies by age according to the power-law function outlined above. 
+
+Then, the agents reproduce. Among the agents who are between 15 and 45 years old, each reproduces with a probability that depends on whether they currently have the favored trait and the total number of agents at that given time, as described above. The newborns inherit the traits of their parent. 
+
+The agents then age one year and, depending on what turn it is, they environment changes. The state of the environment changes every 50 years. We decide to make these changes deterministic because this allows us to keep better track of what happens immediately after the environment, to which the agents have some direct access, changes. This periodicity allows us to track how the popularity of traits rises and falls after the state of the world changes. This captures the pace of cultural change: whether novel information about the world can reach a majority of the population, and how long this process takes. 
+
+> #### One turn 
+>
+> 1. Agents learn from one another or from the environment. 
+> 2. Agents survive or die. 
+> 3. Agents reproduce and the offspring inherit their traits. 
+> 4. Agents age one year. 
+> 5. If fifty years (turns) have passed, the environment changes. 
+> 
+
+## Exploring the parameter space 
+
+The central question in this study is whether the shape of formative windows changes the rhythm and nature of cultural change, and whether this effect varies among populations with different demographic characteristics. In order to explore this, we ask three questions of this model: 
+
+1) *When the environment changes, how quickly do agents migrate to the favored trait?* This can give us an idea of the speed of cultural change. 
+
+2) *How much consensus is there among agents across the run?* This helps us get at how much the population allows for the coexistence of diverging views. 
+
+3) *How much of that consensus is made up of the favored trait?* This gets at how responsive the population is to environmental changes. 
+
+There are many moving parts to this model, so we have to be strategic in our exploration of the parameter space. These questions can be addressed by varying three broad elements. First, we vary the ages when agents are most open to exploration - i.e. the mean of the Gumbel distribution that defines the agents' probability to learn. In one condition, exploration peaks at 12 and in the other it does at 20 years old. Second, we vary the age range within which agents' are open to exploration; we do this by varying the variance of these Gumbel distributions. We use the three variances - 2, 5, and 10 - depicted in Figure X. Lastly we explore three populations with different demographic configurations. One where birth rates are high and life expectancy relatively short ($\beta = 0.1$, $\beta_{bonus} = 0.05$, $\alpha = 2$), and the mean age of the population is around 15. The other where birth rates are lower but life expectancy longer ($\beta = 0.05$, $\beta_{bonus} = 0.05$, $\alpha = 4$), which results in an average age of around 20. The last demographic condition has low birth rates but very long lifespans ($\beta = 0.05$, $\beta_{bonus} = 0.05$, $\alpha = 4$), and this results in a mean age of around 30. 
+
+Here, we have a $2 \times 3 \times 3$ design, which results in 18 different conditions. We contend that these combinations help us address the relationship between cultural change and the shape of formative periods, across populations with varying demographic properties. We run the model 50 times in each parameter combination, each run consisting of 500 turns. 
+
+## Results 
+
+Let's begin by exploring how quickly cultural change occurs after the environment changes. To do this, we can look at how many agents had the favored trait - the one that corresponded with the state of the environment - in the turns after the environment changed. Recall that the environment changes every 50 turns, so on each run we get ten changes. What we can do is take the proportions of the favored trait on the fifty turns after each change, run a linear regression, and calculate the slope of that line. A steep slope would mean that the agents coalesced quickly around the favored trait. The plot below shows an example of what this might look like on a single run. 
+
+```{r}
+# Read in the data frame
+complete_list <- readRDS("gumbel_exploration.rds")
+
+# Empty repository for data 
+d <- data.frame()
+
+# Loop to unpack the data
+for (j in 1:18) {
+  for (i in 1:50) {
+    df <- complete_list[[j]][[i]]
+    d <- rbind(d, df)
+  }
+}
+
+# Create variable for group 
+d <- d %>% 
+  mutate(fertility = case_when(b_rate == 0.05 & 
+                                 dem_surv == 4 ~ "20s", 
+                               b_rate == 0.05 & 
+                                 dem_surv == 8 ~ "30s", 
+                               b_rate == 0.1 & 
+                                 dem_surv == 2 ~ "15s"))
+# Create a variable for period 
+dlong <- d %>% 
+  mutate(period = rep(c(1:10), 
+                      each = 50, 
+                      times = 900)) %>% 
+  pivot_longer(cols = 2:5, 
+               names_to = "trait", 
+               values_to = "prevalence") %>% 
+  mutate(favored = case_when(trait == "t1" &
+                               state_world == 1 ~ 1, 
+                             trait == "t2" &
+                               state_world == 2 ~ 1,
+                             trait == "t3" &
+                               state_world == 3 ~ 1,
+                             trait == "t4" &
+                               state_world == 4 ~ 1))
+dlong_filtered <- dlong %>% 
+  filter(favored == 1)
+
+```
+
+```{r}
+dlong_filtered %>% 
+  filter(mu_open == 20, 
+         sigma_open == 2, 
+         fertility == "20s", 
+         sim == 1) %>% 
+  ggplot(aes(x = turn, 
+             y = prevalence)) +
+  geom_point(col = "red", 
+             size = 0.5, 
+             alpha = 0.5) + 
+  geom_smooth(aes(group = period), 
+              method = "lm", 
+              show.legend = T, 
+              se = F, 
+              color = 'lightblue', 
+              alpha = 0.5) + 
+  labs(x = "Turn", 
+       y = "Prevalence", 
+       title = "Popularity of Favored Traits")
+```
+
+We are interested in the distribution of these slopes for each period, across all conditions. Figure X shows this distribution. The columns represent our variance conditions - 2, 5, and 10. The rows, in turn, denote the age at which exploration peaks. The colors depict our demographic conditions. We use the average age of the population in each condition to identify them more easily. 
+
+```{r}
+# Function for fitting linear models
+fit_ols <- function(df) {
+  lm(prevalence ~ turn, data = df)
+}
+
+out_tidy <- dlong_filtered %>% 
+  group_by(mu_open,
+           sigma_open, 
+           fertility,
+           period) %>% 
+  nest() %>% 
+  mutate(model = map(data, fit_ols), 
+         tidied = map(model, tidy)) %>% 
+  unnest(tidied) %>% 
+  filter(term == 'turn') %>% 
+  select(period,
+         mu_open,
+         sigma_open, 
+         fertility,
+         estimate, 
+         std.error) %>% 
+  mutate(lower = estimate-1.96*std.error, 
+         upper = estimate+1.96*std.error)
+
+out_tidy %>% 
+  mutate(period = as.factor(period)) %>%
+  ggplot(aes(x = period, 
+             y = estimate, 
+             color = fertility)) + 
+  geom_pointrange(aes(ymin = lower, 
+                  ymax = upper), 
+                  size = 0.5, 
+                  alpha = 0.5) +
+  facet_grid(mu_open~sigma_open) + 
+  labs( x = "Period", 
+        y = "Slope", 
+        title = "Slopes across periods")
+
+```
+
+The first general pattern we see here is that slopes tend to be higher when formative periods are centered around the younger age. This indicates that, in our model, populations where formative periods peak earlier change more quickly. We also notice that, across conditions, as the variance of the formative periods increase, so do the slopes. This is unsurprising: when a wider range of agents are open to learning, then cultural change might happen more rapidly. 
+
+Another result is related to the demographic makeup of the populations. When formative windows are relatively narrow - variance 2 and 5 -  we notice that slopes are slightly higher for populations that have demographic characteristics such that the average age of the agents is close to the formative windows' peak. This is because, at any given time, there are more agents with a high probability to learn and update. This goes away in the high variance condition, however, where the populations with higher average age appear to foster quicker cultural change. 
+
+Now, we want to explore how much consensus there is across each condition. This is interesting because it allows us to examine how each condition allows for the coexistence of multiple traits. One way to look at this is to ask what is the percentage of the population the holds the most popular trait at any given turn. Notice that the most popular trait need not be the "favored" trait; it is simply the one that, at the time, counts the most adherents. The following figure shows the median of the percentage of agents who have the most popular  trait on each turn across all conditions. 
+
+```{r}
+dominant_df <- dlong %>% 
+  group_by(mu_open, 
+           sigma_open,
+           fertility,
+           turn, 
+           sim,
+           trait) %>% 
+  summarize(total = sum(prevalence)) %>% 
+  arrange(desc(total)) %>% 
+  slice(1)
+
+total_pop_df <- dlong %>% 
+  group_by(mu_open, 
+           sigma_open,
+           fertility,
+           sim,
+           turn) %>% 
+  summarise(population = population) %>% 
+  slice(1)
+
+perc_df <- left_join(dominant_df, 
+                     total_pop_df, 
+                     by = c("mu_open", 
+                            "sigma_open", 
+                            "fertility", 
+                            "turn", 
+                            "sim")) %>% 
+  mutate(percent_dominant = total/population)
+
+df_medians <- perc_df %>% 
+  group_by(mu_open, 
+           sigma_open, 
+           fertility) %>% 
+  summarise(med = median(percent_dominant))
+
+perc_df %>% 
+  group_by(mu_open, 
+           sigma_open,
+           fertility, 
+           turn) %>% 
+  summarise(median = median(percent_dominant), 
+            vars = sd(percent_dominant)) %>% 
+  ggplot(aes(x = turn, 
+             y = median, 
+             color = fertility)) + 
+  geom_line() +
+  facet_grid(mu_open~sigma_open) + 
+  labs(y = "Median %", 
+       x = "Turn", 
+       title = "Median percentage of popular trait")
+```
+
+The trajectories here are cyclical and follow the changes of the environment reliably. At first glance, we note that when exploration peaks at a younger age, populations tend to reach higher degrees of consensus. In the high variance condition, for instance, populations where the average age is around 15 reach close to total consensus at times. When exploration peaks later, we notice that high degrees of consensus are only reached in the high variance condition. 
+
+When varying windows peak at 12, we notice that the population with mean age of around 15 tends to reach higher degrees of consensus. The popular trait here represents the lion's share of the population's views. We do not see such a clear trend in the conditions where learning peaks later in the agents' lifetime. 
+
+Notice, however, that across conditions the population with a mean age of 30 tends to reach lower levels of consensus. This is particularly stark when the formative windows have high variance: even in this condition, the line of consensus oscillates around 0.6. Our model suggests then that even when a big portion of the population is open to exploration - i.e. formative periods are long -, aging populations might be less likely to reach consensus. 
+
+Lastly, we explore how much of that consensus is made up of the favored trait. Recall that the most popular trait is not necessarily the favored trait. But the extent to which the popular trait **is** the favored trait gives us information: it tells us how the population is coalescing around the current state of the environment - i.e. it suggests how reactive the population is to environmental changes. The plot below shows the median of the extent to which the most popular trait is the favorite trait. A one on the y-axis, then, indicates that the most popular was always the one favored by the state of the environment. 
+
+```{r}
+
+pdf <- left_join(perc_df, 
+                 dlong_filtered, 
+                 by = c("mu_open", 
+                        "sigma_open", 
+                        "fertility", 
+                        "turn", 
+                        "sim")) %>% 
+  mutate(pct_favored = prevalence/total)
+
+
+pdf %>% 
+  group_by(mu_open, 
+           sigma_open,
+           fertility) %>% 
+  summarise(meds = median(pct_favored), 
+            vars = sd(pct_favored), 
+            lower = quantile(pct_favored, 0.25), 
+            upper = quantile(pct_favored, 0.75)) %>% 
+  ggplot(aes(x = fertility, 
+             y = meds)) + 
+  geom_point(size = 1.5, 
+             shape = 1, 
+             color = "red") +
+  facet_grid(mu_open~sigma_open) + 
+  ylim(0,1) +
+  labs(y = "Median %", 
+       x = "Turn", 
+       title = "Median percentage of favored trait")
+
+
+```
+
+The main finding here is about the variance of the formative windows. When a limited age range is open to exploration - variances 2 and 5 - then the most popular traits are not necessarily the favored trait. This means that traits, which do not necessarily fit the current state of the environment, are being transmitted. When the variance of the formative periods is high, the medians reach one, which indicates that populations are mostly coalescing around the trait that works in the current environment. 
+
+## Discussion 
+
+Our model suggests that the shape of formative periods does affect the *pace* of cultural change. When formative periods are longer - have higher variance - cultural change tends to happen more quickly. Change also happens faster in populations where the formative periods peak earlier in the agents' lifespans. 
+
+There is also an interesting dynamic between the pace of cultural change and the demographic properties of the agents. Our model suggests that - when formative windows are relatively narrow - change happens faster in populations whose mean age is close to the period where formative windows peak. 
+
+This has important implications for how we understand cultural change in contemporary society. A lot of industrialized societies currently have aging populations. At the same time, young people in these societies are increasingly postponing the rituals of adulthood, taking longer to "settle down". The latter could be regarded as either shifting the age when exploration peaks or widening the period when agents are open to information. As our model suggests, in a population whose mean age is increasing, both processes would result in the capacity for quick cultural change. 
+
+Our results also suggest that the shape of formative periods affects the *extent* of cultural change. Our model indicates that when formative windows are wide or when they peak at an earlier age, populations are more likely to reach high levels of consensus. In turn, populations with a higher average age or with narrow formative windows do not tend to reach high levels of consensus. 
+
+Again, these results are suggestive when situated in the context of industrialized societies. As our model notes, aging populations might be less prone to reach high levels of consensus, especially when formative periods are narrow. This relationship between the shape of formative periods and the demographic properties of the population might be helpful to explain some phenomena that have recently drawn a lot of scholarly attention like rising levels of polarization. 
+
+But this need not be negative. Our results echo work on evolutionary biology which notes that narrow formative periods make populations less reactive to changes in the environment. This might be beneficial in a context when the environment changes frequently or when information is unreliable. Populations with narrow formative periods might be able to avoid fads; they might be able to preserve cultural ideas that, while perhaps presently unhelpful, are worth keeping, in case they come in handy at a future time.  
