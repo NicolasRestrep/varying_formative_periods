@@ -1,0 +1,256 @@
+---
+title: "World Value Survey - Longitudinal Data"
+author: "Nicolas Restrepo"
+date: "6/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(countrycode)
+library(janitor)
+library(naniar)
+library(haven)
+library(HMDHFDplus)
+```
+
+Here, I am going to begin exploring the data from the World Value Survey and see what I could potentially do with it. 
+
+Let's begin by reading in the data. 
+
+```{r}
+d <- read_rds("Data/WVS_TimeSeries_R_v1_6.rds")
+```
+
+Now, I am going to select the variables of interest.  
+
+```{r}
+d_short <- d %>% 
+  select(S002, 
+         S020,
+         S003,
+         X001,
+         X003, 
+         X007, 
+         X023, 
+         Y002, 
+         Y003, 
+         Y023A, 
+         Y023B) %>% 
+  rename(wave = S002, 
+         country_code = S003, 
+         year_survey = S020,
+         sex = X001,
+         age = X003, 
+         marital_status = X007, 
+         complete_edu = X023, 
+         postm_index = Y002, 
+         auth_index = Y003, 
+         homosexuality = Y023A, 
+         abortion = Y023B)
+```
+
+I want to do some re-coding, especially of the countries. I'm going recode the country code (and keep) the observations in countries for which the fertility database has data. 
+
+```{r}
+d_short <- d_short %>% 
+  mutate(country = case_when(country_code == 40 ~ "Austria", 
+                             country_code == 112 ~ "Belarus", 
+                             country_code == 100 ~ "Bulgaria", 
+                             country_code == 124 ~ "Canada", 
+                             country_code == 152 ~ "Chile", 
+                             country_code == 191 ~ "Croatia", 
+                             country_code == 203 ~ "Czechia", 
+                             country_code == 208 ~ "Denmark",
+                             country_code == 233 ~ "Estonia", 
+                             country_code == 246 ~ "Finland", 
+                             country_code == 250 ~ "France", 
+                             country_code == 276 ~ "Germany", 
+                             country_code == 348 ~ "Hungary", 
+                             country_code == 352 ~ "Iceland",
+                             country_code == 380 ~ "Italy",
+                             country_code == 392 ~ "Japan", 
+                             country_code == 440 ~ "Lithuania", 
+                             country_code == 528 ~ "Netherlands", 
+                             country_code == 616 ~ "Poland", 
+                             country_code == 620 ~ "Portugal", 
+                             country_code == 410 ~ "South Korea", 
+                             country_code == 643 ~ "Russia", 
+                             country_code == 703 ~ "Slovakia", 
+                             country_code == 705 ~ "Slovenia", 
+                             country_code == 724 ~ "Spain", 
+                             country_code == 752 ~ "Sweden", 
+                             country_code == 756 ~ "Switzerland", 
+                             country_code == 804 ~ "Ukraine", 
+                             country_code == 826 ~ "United Kingdom", 
+                             country_code == 840 ~ "United States"
+                             )) %>% 
+  filter(!is.na(country)) %>% 
+  rename(Year = year_survey) %>% 
+  select(country, Year, everything())
+```
+
+Okay, now we have a relatively more manageable and organized dataset. 
+
+Let's see if we can read the fertility rates. 
+
+```{r}
+all_file_names <- list.files('~/Documents/varying_formative_periods/Data')
+all_file_names <- all_file_names[-length(all_file_names)]
+get_fertility_dfs <- function(filename) {
+last_cap <- str_locate_all(filename, "tfr")[[1]][1]
+fcc <- str_sub(filename, 1,last_cap-1)
+path <- paste0("~/Documents/varying_formative_periods/Data/", 
+                   fcc, 
+                   "tfrRR.txt")
+
+
+d <- read_table(path, 
+                skip = 2)
+iso_cc <- str_sub(filename,1,3)
+d$country <- countrycode(iso_cc, 
+            origin = "iso3c", 
+            destination = "country.name")
+d <- d %>% 
+  select(country, Year, everything())
+return(d)
+}
+
+# Run this programatically 
+fertility_rates_df <- map_df(all_file_names, get_fertility_dfs)
+```
+
+Awesome, it seems like we have the fertility rates dataframe up and running. 
+
+Let's try to get the another piece of information: the life expectancy in each country. 
+
+```{r}
+# Set up credentials
+user <- "nr120@duke.edu"
+ps <- "Verde1989"
+
+# get the codes 
+country_codes <- c()
+iso_codes <- c()
+
+for (i in 1:32) {
+  last_cap <- str_locate_all(all_file_names[i], "tfr")[[1]][1]
+  fcc <- str_sub(all_file_names[i], 1,last_cap-1)
+  iso_cc <- str_sub(all_file_names[i],1,3)
+  country_codes[i] <- fcc
+  iso_codes[i] <- iso_cc
+}
+
+life_expectancy <- tibble()
+
+for (j in 1:length(country_codes)) {
+# Get the data from HMD 
+d <- readHMDweb(country_codes[j], 
+           item = "E0per", 
+           username = user, 
+           password = ps)
+
+# Get country name 
+d$country <- countrycode(iso_codes[j], 
+            origin = "iso3c", 
+            destination = "country.name")
+d <- d %>% 
+  select(country, Year, everything())
+
+life_expectancy <- rbind(life_expectancy, d)
+}
+
+```
+
+That seems to have worked out. Let's now get the last piece of information, which will be the percentage of the population that is below 25 at any given point. First, we get a long table, where we get the total number of people in each age-band for each year. 
+
+```{r}
+# Set up credentials
+user <- "nr120@duke.edu"
+ps <- "Verde1989"
+
+# get the codes 
+country_codes <- c()
+iso_codes <- c()
+
+for (i in 1:32) {
+  last_cap <- str_locate_all(all_file_names[i], "tfr")[[1]][1]
+  fcc <- str_sub(all_file_names[i], 1,last_cap-1)
+  iso_cc <- str_sub(all_file_names[i],1,3)
+  country_codes[i] <- fcc
+  iso_codes[i] <- iso_cc
+}
+
+percentage_young <- tibble()
+
+for (j in 1:length(country_codes)) {
+# Get the data from HMD 
+d <- readHMDweb(country_codes[j], 
+           item = "Population", 
+           username = user, 
+           password = ps)
+
+# Get country name 
+d$country <- countrycode(iso_codes[j], 
+            origin = "iso3c", 
+            destination = "country.name")
+d <- d %>% 
+  select(country, Year, everything())
+
+percentage_young <- rbind(percentage_young, d)
+}
+
+```
+
+Let's try to do some wrangling. 
+
+```{r}
+percentage_young <- percentage_young %>% 
+  mutate(young = if_else(Age <= 25, 
+                         1, 
+                         0))
+
+young_df <- percentage_young %>% 
+  group_by(country, 
+           Year, 
+           young) %>% 
+  summarise(total =sum(Total1)) %>% 
+  pivot_wider(names_from = young, 
+              values_from = total) %>% 
+  rename("adult" = `0`, 
+         "young" = `1`) %>% 
+  mutate(perc_young = young / (young+adult))
+  
+```
+
+Alright, I think we got it! Now, unto the merging. 
+
+```{r}
+# Let's begin by merging the fertility rates 
+
+d_merged <- left_join(d_short, fertility_rates_df, by = c("Year", "country"))
+
+# Now let's join life expectancy 
+
+d_merged <- left_join(d_merged, 
+                      life_expectancy, 
+                      by = c("Year", "country"))
+
+# Finish with percentage young 
+
+d_merged <- left_join(d_merged, 
+                      young_df, 
+                      by = c("Year", "country"))
+```
+
+Let's now save it! 
+
+```{r}
+write_csv(d_merged, 
+          "~/Documents/varying_formative_periods/Data/demographic_data.csv")
+```
+
